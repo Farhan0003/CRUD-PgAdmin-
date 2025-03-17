@@ -1,0 +1,98 @@
+import psycopg2
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Get database credentials from environment variables
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+
+# Connect to PostgreSQL
+def connect_db():
+    return psycopg2.connect(
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        host=DB_HOST,
+        port=DB_PORT
+    )
+
+# CREATE TABLE
+def create_table():
+    with connect_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS employee (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL,
+                    age INT CHECK (age > 0),
+                    department VARCHAR(50),
+                    salary DECIMAL(10,2) CHECK (salary > 0)
+                );
+            ''')
+            conn.commit()
+            print("Table 'employee' created successfully!")
+
+# INSERT multiple employees
+def insert_employees():
+    employees = [
+        ('Alice Johnson', 30, 'HR', 50000.00),
+        ('Bob Smith', 28, 'Engineering', 70000.00),
+        ('Charlie Brown', 35, 'Marketing', 60000.00),
+        ('Diana Prince', 32, 'Finance', 75000.00),
+        ('Ethan Hunt', 29, 'Operations', 55000.00)
+    ]
+    with connect_db() as conn:
+        with conn.cursor() as cur:
+            cur.executemany("INSERT INTO employee (name, age, department, salary) VALUES (%s, %s, %s, %s)", employees)
+            conn.commit()
+            print("5 employees inserted successfully!")
+
+# FETCH all employees
+def fetch_employees():
+    with connect_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM employee")
+            rows = cur.fetchall()
+            print("\n📌 All Employees:")
+            for row in rows:
+                print(row)
+
+# UPDATE employee salary
+def update_employee(emp_id, new_salary):
+    with connect_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE employee SET salary = %s WHERE id = %s", (new_salary, emp_id))
+            conn.commit()
+            print(f"Employee ID {emp_id} salary updated to {new_salary}")
+
+# DELETE an employee
+def delete_employee(emp_id):
+    with connect_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM employee WHERE id = %s", (emp_id,))
+            conn.commit()
+            print(f"Employee ID {emp_id} deleted")
+
+# DROP a specific table
+def drop_table(table_name):
+    with connect_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(f"DROP TABLE IF EXISTS {table_name} CASCADE;")
+            conn.commit()
+            print(f"Table '{table_name}' dropped successfully!")
+
+# Execute functions
+create_table()
+insert_employees()
+fetch_employees()
+update_employee(1, 65000)  # Update salary of employee with ID 1
+fetch_employees()          # Display employees after update
+delete_employee(1)         # Delete employee with ID 1
+fetch_employees()          # Display employees after delete
+drop_table("employee")    # Uncomment to drop table
